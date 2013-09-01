@@ -22,6 +22,7 @@ private:
 	ui * UI;
 	pbody* BodyAtPos(float x, float y);
 	vector<POINT> penetration(vector<pbody*>::iterator b1, vector<pbody*>::iterator b2);
+	fpoint grav;
 public:
 	void process();
 	void init (renderer * r, ui * u);
