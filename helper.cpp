@@ -1,6 +1,5 @@
 #include "helper.h"
 
-
 long long  area (fpoint a, fpoint  b, fpoint  c) 
 {
 	return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
@@ -25,7 +24,6 @@ bool intersect (fpoint  a, fpoint  b, fpoint  c, fpoint  d)
 		&& area(a,b,c) * area(a,b,d) <= 0
 		&& area(c,d,a) * area(c,d,b) <= 0;
 }
-
 
 bool intersect (float  ax, float ay,  float  bx, float by, float cx, float cy, float dx, float dy)
 {

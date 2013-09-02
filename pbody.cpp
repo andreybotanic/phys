@@ -1,11 +1,11 @@
 #include "pbody.h"
 
 float R;
-float A, B, C;
 pbody::pbody(fpoint cnt[3], COLORREF pclr, int cnt_wdth, simulator *sim)
 {
 	pbrush = CreateSolidBrush(pclr);
 	hlbrush = CreateSolidBrush(RGB(0,200,0));
+	stbrush = CreateHatchBrush(4,RGB(0,0,0));
 	cbrush = CreateSolidBrush(RGB(0,0,255));
 	ppen = CreatePen(0, cnt_wdth, 0);
 	cpen = CreatePen(0, cnt_wdth, RGB(0,255,0));
@@ -18,8 +18,7 @@ pbody::pbody(fpoint cnt[3], COLORREF pclr, int cnt_wdth, simulator *sim)
 	l_countour[1].y -= cnt[0].y;
 	l_countour[2].x -= cnt[0].x;
 	l_countour[2].y -= cnt[0].y;
-	sim->UI->vect = (l_countour[1].x  -  l_countour[0].x )* (l_countour[2].y  -  l_countour[1].y ) - (l_countour[2].x  -  l_countour[1].x ) * (l_countour[1].y  -  l_countour[0].y );
-	if (sim->UI->vect >= 0) std::reverse(&(l_countour[0]), &(l_countour[2]));
+	if ((l_countour[1].x  -  l_countour[0].x )* (l_countour[2].y  -  l_countour[1].y ) - (l_countour[2].x  -  l_countour[1].x ) * (l_countour[1].y  -  l_countour[0].y ) >= 0) std::reverse(&(l_countour[0]), &(l_countour[2]));
 	centre_l.x = (l_countour[0].x+ l_countour[1].x+ l_countour[2].x)/3;
 	centre_l.y = (l_countour[0].y+ l_countour[1].y+ l_countour[2].y)/3;
 	R = sqrt((l_countour[0].x - centre_l.x)*(l_countour[0].x - centre_l.x)  + (l_countour[0].y - centre_l.y)*(l_countour[0].y - centre_l.y));
@@ -33,13 +32,7 @@ pbody::pbody(fpoint cnt[3], COLORREF pclr, int cnt_wdth, simulator *sim)
 	bbpen = CreatePen(2, 1, RGB(0,0,0));
 	ishighlited = false;
 	lastupdated = GetTickCount();
-	mass = abs( ((l_countour[2].x-l_countour[1].x)*(l_countour[1].y-l_countour[0].y)-(l_countour[1].x-l_countour[0].x)*(l_countour[2].y-l_countour[1].y)) /2.0);
-	a = sqrt(pow((l_countour[0].x - l_countour[1].x),2) + pow((l_countour[0].y - l_countour[1].y),2));
-	b = sqrt(pow((l_countour[1].x - l_countour[2].x),2) + pow((l_countour[1].y - l_countour[2].y),2));
-	c = sqrt(pow((l_countour[2].x - l_countour[0].x),2) + pow((l_countour[2].y - l_countour[0].y),2));
-	A = ((b*b - a*a -c*c)/(2.0*a));
-	B = pow(((b*b - a*a -c*c)/(2.0*a)), 2.0);
-	C = pow(((b*b - a*a -c*c)/(2.0*a)), 2.0);
+	mass = abs(((l_countour[2].x-l_countour[1].x)*(l_countour[1].y-l_countour[0].y)-(l_countour[1].x-l_countour[0].x)*(l_countour[2].y-l_countour[1].y)) /2.0);
 	I = 0.5 * mass * R *R;
 	ang_accel = 0;
 	sim->bodies.push_back(this);
@@ -47,13 +40,14 @@ pbody::pbody(fpoint cnt[3], COLORREF pclr, int cnt_wdth, simulator *sim)
 	vel.y = 0;
 	col_edge = 0;
 	coll = false;
-	ivel[0].x = ivel[1].x = ivel[2].x = 0;
-	ivel[0].y = ivel[1].y = ivel[2].y = 0;
+	if (re->UI->state == STATIC) isstatic = true; 
+	else
+		isstatic = false;
 }
 
 void pbody::draw()
 {
-	re->draw_triangle(g_countour, coll ? & cbrush : (ishighlited ? &hlbrush : &pbrush), &ppen, &cpen, col_edge);
+	re->draw_triangle(g_countour, coll ? & cbrush : isstatic ? &stbrush : (ishighlited ? &hlbrush : &pbrush), &ppen, &cpen, col_edge);
 	if (coll)
 	{
 		MoveToEx(re->buffer_dc, colis.position.x, colis.position.y, NULL);
@@ -72,7 +66,6 @@ void pbody::draw()
 	}
 }
 
-
 void pbody::process()
 {
 	angle += ang_vel*((GetTickCount() - lastupdated)/1000.0);
@@ -80,11 +73,6 @@ void pbody::process()
 	centre_g.y += vel.y*((GetTickCount() - lastupdated)/1000.0);
 	gcourecalc();
 	lastupdated = GetTickCount();
-}
-
-void pbody::setAV(float av)
-{
-	ang_vel = av;
 }
 
 void pbody::gcourecalc()
@@ -106,12 +94,11 @@ void pbody::gcourecalc()
 		if (g_countour[_k].y >  bbox.bottom ) bbox.bottom = g_countour[_k].y;
 	}
 	DeleteObject(pol);
+
 	t_cont[0].x = g_countour[0].x * 100.0f;
 	t_cont[0].y = g_countour[0].y * 100.0f;
-
 	t_cont[1].x = g_countour[1].x * 100.0f;
 	t_cont[1].y = g_countour[1].y * 100.0f;
-
 	t_cont[2].x = g_countour[2].x * 100.0f;
 	t_cont[2].y = g_countour[2].y * 100.0f;
 
@@ -121,13 +108,16 @@ void pbody::gcourecalc()
 fpoint RA, R1, R2; 
 void pbody::addimpulse(fpoint origin, fpoint normal, float impulse)
 {
-	RA.x  = origin.x - centre_g.x;
-	RA.y =  origin.y - centre_g.y;
+	if (!isstatic)
+	{
+		RA.x  = origin.x - centre_g.x;
+		RA.y =  origin.y - centre_g.y;
 
-	vel.x += impulse * normal.x / mass;
-	vel.y += impulse * normal.y / mass;
+		vel.x += impulse * normal.x / mass;
+		vel.y += impulse * normal.y / mass;
 
-	ang_vel += (impulse * (normal.y * RA.x - normal.x * RA.y) /I);
+		ang_vel += (impulse * (normal.y * RA.x - normal.x * RA.y) /I);
+	}
 }
 
 
@@ -141,8 +131,8 @@ float Z1, Z2;
 float J;
 float impulse;
 bool co;
-
 pbody *m1, *m2;
+int vc;
 void pbody::check_coll(pbody * body)
 {
 	m1 = this;
@@ -160,40 +150,19 @@ void pbody::check_coll(pbody * body)
 
 			colis.position.x = x_;
 			colis.position.y = y_;
-			if (intersect(centre_g.x, centre_g.y, x_, y_, body->g_countour[0].x, body->g_countour[0].y, body->g_countour[1].x, body->g_countour[1].y))
+			for (vc = 0; vc < 3; vc++)
 			{
-				body->col_edge = 1;
-				colis.vector.y = -1.0*(body->g_countour[0].x -body->g_countour[1].x);
-				colis.vector.x = (body->g_countour[0].y -body->g_countour[1].y);
-				_cx1 = body->g_countour[0].x;
-				_cx2 = body->g_countour[1].x;
-				_cy1 = body->g_countour[0].y;
-				_cy2 = body->g_countour[1].y;
-				co = true;
-			}
-			else if
-				(intersect(centre_g.x, centre_g.y, x_, y_, body->g_countour[1].x, body->g_countour[1].y, body->g_countour[2].x, body->g_countour[2].y))
-			{
-				body->col_edge = 2;
-				colis.vector.y = -1.0*(body->g_countour[1].x -body->g_countour[2].x);
-				colis.vector.x = (body->g_countour[1].y -body->g_countour[2].y);
-				_cx1 = body->g_countour[1].x;
-				_cx2 = body->g_countour[2].x;
-				_cy1 = body->g_countour[1].y;
-				_cy2 = body->g_countour[2].y;
-				co = true;
-			}
-			else  if
-				(intersect(centre_g.x, centre_g.y, x_, y_, body->g_countour[2].x, body->g_countour[2].y, body->g_countour[0].x, body->g_countour[0].y))
-			{
-				body->col_edge = 3;
-				colis.vector.y = -1.0*(body->g_countour[2].x -body->g_countour[0].x);
-				colis.vector.x = (body->g_countour[2].y -body->g_countour[0].y);
-				_cx1 = body->g_countour[2].x;
-				_cx2 = body->g_countour[0].x;
-				_cy1 = body->g_countour[2].y;
-				_cy2 = body->g_countour[0].y;
-				co = true;
+				if (intersect(centre_g.x, centre_g.y, x_, y_, body->g_countour[vc].x, body->g_countour[vc].y, body->g_countour[(vc+1)%3].x, body->g_countour[(vc+1)%3].y))
+				{
+					body->col_edge = vc+1;
+					colis.vector.y = -1.0*(body->g_countour[vc].x -body->g_countour[(vc+1)%3].x);
+					colis.vector.x = (body->g_countour[vc].y -body->g_countour[(vc+1)%3].y);
+					_cx1 = body->g_countour[vc].x;
+					_cx2 = body->g_countour[(vc+1)%3].x;
+					_cy1 = body->g_countour[vc].y;
+					_cy2 = body->g_countour[(vc+1)%3].y;
+					co = true;
+				}
 			}
 			if (co)
 			{
@@ -220,21 +189,25 @@ void pbody::check_coll(pbody * body)
 					+ colis.vector.y * (colis.vector.y /m1->mass + R1.x * Z1 /m1->I
 					+ colis.vector.y /m2->mass - R2.x * Z2 /m2->I);
 
-				impulse = (-(1.0 + 0.3) * vab) / J;
-				
+				impulse = (-(1.0 + (body->isstatic || isstatic)? 0.3 : 0.5) * vab) / J;
+
 				if (impulse >= 0)
 				{
 					m2->addimpulse(colis.position, colis.vector, -impulse);
 					m1->addimpulse(colis.position, colis.vector, impulse);
 				}
-				body->centre_g.x -= colis.vector.x;
-				body->centre_g.y -= colis.vector.y;
-				centre_g.x += colis.vector.x;
-				centre_g.y += colis.vector.y;
-
+				if (!body->isstatic)
+				{
+					body->centre_g.x -= colis.vector.x;
+					body->centre_g.y -= colis.vector.y;
+				}
+				if (!isstatic)
+				{
+					centre_g.x += colis.vector.x;
+					centre_g.y += colis.vector.y;
+				}
 				break;
 			}
-
 		}
 	}
 }

@@ -5,7 +5,6 @@ void ui::init(simulator * s, renderer * r)
 	sim = s;
 	rend = r;
 	state = CREATE;
-	vect = 0;
 }
 
 ui::ui()
@@ -28,7 +27,7 @@ void ui::onLMBD()
 	else
 	if (state == MOVE) 
 		state = SELECT;
-	if (state == CREATE)
+	if (state == CREATE || state == STATIC)
 	{
 		pol_to_create[click_count] = click_pos;
 		click_count++;
@@ -54,7 +53,6 @@ void ui::onRMBD()
 		state = RMBB;
 		body_at_click->inangl = body_at_click->angle;
 	}
-	//else state = RMBNB;
 }
 float im;
 void ui::onRMBU()
@@ -93,6 +91,15 @@ void ui::onKeyDown(int key)
 		state = CREATE;
 		sim->bodies.clear();
 	}
+	if (key == 83)//s
+	{
+		if (state != STATIC)
+		{
+		oldstate = state;
+		state = STATIC;
+		}
+		else state = oldstate;
+	}
 }
 
 
@@ -100,7 +107,6 @@ void ui::onKeyUp(int key)
 {
 
 }
-
 
 void ui::update()
 {
@@ -111,5 +117,5 @@ void ui::update()
 		impulse_line_begin.x = _X*cos(body_at_click->angle - body_at_click->inangl) - _Y*sin(body_at_click->angle - body_at_click->inangl) + body_at_click->centre_g.x;
 		impulse_line_begin.y = _X*sin(body_at_click->angle - body_at_click->inangl) + _Y*cos(body_at_click->angle - body_at_click->inangl) + body_at_click->centre_g.y;
 	}
-	sprintf(debugstr, "state= %s x= %f y= %f vect= %i\0", statelist[state], mouse_pos.x, mouse_pos.y, vect);
+	sprintf(debugstr, "state= %s x= %f y= %f\0", statelist[state], mouse_pos.x, mouse_pos.y);
 }
